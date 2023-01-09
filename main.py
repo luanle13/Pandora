@@ -1,14 +1,13 @@
 from detect import detect_image
 import torch
 from torchvision import transforms
+import pandas as pd
 from PIL import Image
 import time
 
 device = 'cuda' if torch.cuda.is_available else 'cpu'
 use_gpu = device == 'cuda'
-# if use_gpu:
-#     model = torch.load("weight/vectorize_model.pth")
-# else:
+database = pd.read_csv("database/vectorized.csv")
 vectorize_model = torch.load("weight/vectorize_model.pth", map_location=torch.device('cpu'))
 transformer = transforms.Compose([transforms.Resize(256), transforms.ToTensor()])
 
