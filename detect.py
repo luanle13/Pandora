@@ -287,7 +287,7 @@ def detect_image(
         for *xyxy, conf, cls in reversed(det):
             xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()
             # line = (cls, *xywh, conf)
-            return_result.append({'class': cls, 'xywh': xywh})
+            return_result.append({'class': cls.tolist(), 'xywh': xywh})
         return return_result
     return []
 
