@@ -40,8 +40,10 @@ if __name__ == "__main__":
     image = Image.open("images/test.jpg")
     result_yolo = detect_image(weights="./weight/best.pt", source="./images",
                                data="./custom_data/yolo_deepfashion_data.yaml", conf_thres=0.1)
+
+    respond_result = []
     for result in result_yolo:
-        label = result['class']
+        label = int(result['class'])
         xywh = result['xywh']
         x0, y0, x1, y1 = turn_xywh_to_coordination(image.size, xywh)
         crop_img = image.crop((x0, y0, x1, y1))
