@@ -9,7 +9,9 @@ https://drive.google.com/file/d/1j6z1DVcsY2FZWhV86-ljCJuaVWmdnz7F/view?usp=share
 The json body is:
 
 {
+
   "image": <base64 string>
+  
 }
 
 Good luck!!!
