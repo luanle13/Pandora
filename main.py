@@ -3,13 +3,9 @@ import torch
 from torchvision import transforms
 import pandas as pd
 from PIL import Image
-import time
-
-device = 'cuda' if torch.cuda.is_available else 'cpu'
-use_gpu = device == 'cuda'
-database = pd.read_csv("database/vectorized.csv")
-vectorize_model = torch.load("weight/vectorize_model.pth", map_location=torch.device('cpu'))
-transformer = transforms.Compose([transforms.Resize(256), transforms.ToTensor()])
+import numpy as np
+from scipy import spatial
+from flask import Flask, flash, request, redirect, url_for
 
 
 def vectorize_image(img, model, transformer):
@@ -35,16 +31,68 @@ def turn_xywh_to_coordination(image_size, xywh):
     return x0, y0, x1, y1
 
 
+def get_top(top, vector, label):
+    return_array = []
+    list_cos_dist = []
+    candidate_indexes = []
+    i = 0
+    for index, row in database.iterrows():
+        if int(row['category_num']) == label:
+            vec = vectorize_db.iloc[index, 1:].to_numpy()
+            cosine_distance = spatial.distance.cosine(vector, vec)
+            list_cos_dist.append(cosine_distance)
+            candidate_indexes.append(index)
+    ranked_dist_indexes = np.argsort(list_cos_dist)
+    for index in range(0, top):
+        id = candidate_indexes[ranked_dist_indexes[index]]
+        return_array.append({'dir_img': database['dir_img'][id], 'label': database['category'][id]})
+    return return_array
+
+
+def createDicts():
+    dict_cate_num = {}
+    dict_num_cate = {}
+    with open('category.txt') as f:
+        i = 0
+        while True:
+            category = f.readline().strip()
+            if not category:
+                break
+            dict_cate_num[category] = i
+            dict_num_cate[i] = category
+            i += 1
+    return dict_cate_num, dict_num_cate
+
+
+# app = Flask(__name__)
+device = 'cuda' if torch.cuda.is_available else 'cpu'
+use_gpu = device == 'cuda'
+database = pd.read_csv("database/db_data.csv")
+vectorize_db = pd.read_csv("database/vectorized.csv")
+vectorize_model = torch.load("weight/vectorize_model.pth", map_location=torch.device('cpu'))
+transformer = transforms.Compose([transforms.Resize(256), transforms.ToTensor()])
+dict_cate_num, dict_num_cate = createDicts()
+
+
+# @app.route('/', methods=['POST'])
+# def get_top_similar_images():
 if __name__ == "__main__":
+    # if 'file' not in request.files:
+    #     flash('No file part')
+    #     return redirect(request.url)
     image = Image.open("images/test.jpg")
     result_yolo = detect_image(weights="./weight/best.pt", source="./images",
-                               data="./custom_data/yolo_deepfashion_data.yaml", conf_thres=0.1)
+                               data="./custom_data/yolo_deepfashion_data.yaml", conf_thres=0.2)
 
-    respond_result = []
+    # respond_result = []
     for result in result_yolo:
         label = int(result['class'])
         xywh = result['xywh']
         x0, y0, x1, y1 = turn_xywh_to_coordination(image.size, xywh)
         crop_img = image.crop((x0, y0, x1, y1))
-        vector = vectorize_image(image, vectorize_model, transformer)
-        print(vector)
+        vector = vectorize_image(crop_img, vectorize_model, transformer)
+        top_similar = get_top(3, vector, label)
+        # print(dict_num_cate[label])
+        for obj in top_similar:
+            # print(obj['label'])
+            Image.open(f"database/images/{obj['dir_img']}").show()
