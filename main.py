@@ -6,6 +6,7 @@ from PIL import Image
 import numpy as np
 from scipy import spatial
 from flask import Flask, flash, request, redirect, url_for
+import base64
 
 
 def vectorize_image(img, model, transformer):
@@ -64,7 +65,7 @@ def createDicts():
     return dict_cate_num, dict_num_cate
 
 
-# app = Flask(__name__)
+app = Flask(__name__)
 device = 'cuda' if torch.cuda.is_available else 'cpu'
 use_gpu = device == 'cuda'
 database = pd.read_csv("database/db_data.csv")
@@ -74,25 +75,37 @@ transformer = transforms.Compose([transforms.Resize(256), transforms.ToTensor()]
 dict_cate_num, dict_num_cate = createDicts()
 
 
-# @app.route('/', methods=['POST'])
-# def get_top_similar_images():
-if __name__ == "__main__":
-    # if 'file' not in request.files:
-    #     flash('No file part')
-    #     return redirect(request.url)
-    image = Image.open("images/test.jpg")
-    result_yolo = detect_image(weights="./weight/best.pt", source="./images",
-                               data="./custom_data/yolo_deepfashion_data.yaml", conf_thres=0.2)
+@app.route('/', methods=['POST'])
+def get_top_similar_images():
+    body = request.json
+    if 'image' not in body:
+        flash('No image found')
+        return redirect(request.url)
+    elif not body['image']:
+        flash('Image can not be null')
+    else:
+        image_data = base64.b64decode(body['image'])
+        with open("images/test.jpg", 'wb') as f:
+            f.write(image_data)
 
-    # respond_result = []
-    for result in result_yolo:
-        label = int(result['class'])
-        xywh = result['xywh']
-        x0, y0, x1, y1 = turn_xywh_to_coordination(image.size, xywh)
-        crop_img = image.crop((x0, y0, x1, y1))
-        vector = vectorize_image(crop_img, vectorize_model, transformer)
-        top_similar = get_top(3, vector, label)
-        # print(dict_num_cate[label])
-        for obj in top_similar:
-            # print(obj['label'])
-            Image.open(f"database/images/{obj['dir_img']}").show()
+        result_yolo = detect_image(weights="./weight/best.pt", source="./images",
+                                   data="./custom_data/yolo_deepfashion_data.yaml", conf_thres=0.2)
+        image = Image.open("images/test.jpg")
+        respond_result = {}
+        for index, result in enumerate(result_yolo):
+            label = int(result['class'])
+            xywh = result['xywh']
+            x0, y0, x1, y1 = turn_xywh_to_coordination(image.size, xywh)
+            crop_img = image.crop((x0, y0, x1, y1))
+            vector = vectorize_image(crop_img, vectorize_model, transformer)
+            top_similar = get_top(3, vector, label)
+            list_b64_string = []
+            for obj in top_similar:
+                with open(f"database/images/{obj['dir_img']}", 'rb') as f:
+                    b64_str = base64.b64encode(f.read())
+                    list_b64_string.append(str(b64_str.decode('utf-8')))
+            respond_result[index] = {'category': dict_num_cate[label], 'list_b64_str': list_b64_string}
+        return respond_result
+
+if __name__ == "__main__":
+    app.run()
