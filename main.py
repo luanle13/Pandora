@@ -90,7 +90,7 @@ def get_top_similar_images():
         result_yolo = detect_image(weights="./weight/best.pt", source="./images",
                                    data="./custom_data/yolo_deepfashion_data.yaml", conf_thres=0.2)
         image = Image.open("images/test.jpg")
-        respond_result = {}
+        respond_result = { "data": [] }
         for index, result in enumerate(result_yolo):
             label = int(result['class'])
             xywh = result['xywh']
@@ -103,9 +103,9 @@ def get_top_similar_images():
                 with open(f"database/images/{obj['dir_img']}", 'rb') as f:
                     b64_str = base64.b64encode(f.read())
                     list_b64_string.append(str(b64_str.decode('utf-8')))
-            respond_result[f"item_{index}"] = {'category': dict_num_cate[label], 'list_b64_str': list_b64_string}
+            respond_result["data"].append({'category': dict_num_cate[label], 'list_b64_str': list_b64_string})
         return respond_result
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host="localhost", port=5000, debug=True)
