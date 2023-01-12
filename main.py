@@ -5,7 +5,7 @@ import pandas as pd
 from PIL import Image
 import numpy as np
 from scipy import spatial
-from flask import Flask, flash, request, redirect, url_for
+from flask import Flask, flash, request, redirect
 import base64
 
 
@@ -36,7 +36,6 @@ def get_top(top, vector, label):
     return_array = []
     list_cos_dist = []
     candidate_indexes = []
-    i = 0
     for index, row in database.iterrows():
         if int(row['category_num']) == label:
             vec = vectorize_db.iloc[index, 1:].to_numpy()
@@ -104,8 +103,9 @@ def get_top_similar_images():
                 with open(f"database/images/{obj['dir_img']}", 'rb') as f:
                     b64_str = base64.b64encode(f.read())
                     list_b64_string.append(str(b64_str.decode('utf-8')))
-            respond_result[index] = {'category': dict_num_cate[label], 'list_b64_str': list_b64_string}
+            respond_result[f"item_{index}"] = {'category': dict_num_cate[label], 'list_b64_str': list_b64_string}
         return respond_result
+
 
 if __name__ == "__main__":
     app.run()
